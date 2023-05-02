@@ -1,0 +1,70 @@
+resource "volterra_azure_vnet_site" "azsite" {
+  name       = "${var.namespace}-${var.location}"
+  namespace  = "system"
+  azure_region = var.regions[var.location]
+  resource_group = "${var.namespace}-${var.location}"
+
+  default_blocked_services = true
+
+  // One of the arguments from this list "aws_cred assisted" must be set
+  azure_cred {
+    name      = var.azure_cred
+    namespace = "system"
+  }
+  machine_type = var.azure_instance_type
+
+  // One of the arguments from this list "logs_streaming_disabled log_receiver" must be set
+  logs_streaming_disabled = true
+
+  vnet {
+    new_vnet {
+      autogenerate = true
+      primary_ipv4 = "10.1.0.0/16"
+    }
+  }
+
+  labels = {
+    "${var.namespace}.sentence"=var.site_type,
+    "hw-model"=var.aws_instance_type,
+    "provider"="AWS",
+    "ves.io/siteType"="ves-io-ce"
+  }  
+
+  tags = {
+    "owner"="${var.email}"
+  }
+
+  // One of the arguments from this list "ingress_gw ingress_egress_gw voltstack_cluster" must be set
+  ingress_gw {
+    az_nodes {
+      azure_az  = "1"
+      disk_size = "80"
+
+      local_subnet {
+        // One of the arguments from this list "subnet subnet_param" must be set
+
+        subnet_param {
+          ipv4 = "10.1.1.0/24"
+          //ipv6 = "1234:568:abcd:9100::/64"
+        }
+      }
+    }
+    azure_certified_hw = "azure-byol-voltmesh"
+
+    performance_enhancement_mode {
+      // One of the arguments from this list "perf_mode_l7_enhanced perf_mode_l3_enhanced" must be set
+      perf_mode_l7_enhanced = true
+    }
+  }
+  // One of the arguments from this list "nodes_per_az total_nodes no_worker_nodes" must be set
+  #nodes_per_az = "2"
+  no_worker_nodes = true
+}
+
+resource "volterra_tf_params_action" "apply_azure_site" {
+  site_name       = volterra_azure_vnet_site.azsite.name
+  site_kind       = "azure_vnet_site"
+  action          = "apply"
+  wait_for_action = true
+}
+

@@ -1,0 +1,81 @@
+pipeline {
+    agent {
+        node {
+	    label 'jenkins'
+	    customWorkspace "${JENKINS_HOME}/jobs/${JOB_NAME}/workspace/${params.location}"
+        }
+    } 
+
+    parameters {
+        choice(
+            choices: ['aws-eu', 'aws-us', 'aws-ap', 'az-eu', 'az-us', 'az-ap'],
+            name: 'location'
+        )
+        choice(
+            choices: ['full', 'frontend', 'backend', 'none'],
+            name: 'sitetype'
+        )
+    }
+
+    stages {
+        stage('code') { 
+            steps {
+                git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+            }
+        }
+        stage('enable aws') {
+	    when { expression { params.location[1] == 'w' } }
+            steps {
+                dir( 'ce-cloud-depl' ) {
+                    sh 'mv f5xc_aws_site_create.tf_ f5xc_aws_site_create.tf'
+                }
+            }
+        }
+        stage('enable azure') {
+            when { expression { params.location[1] == 'z' } }
+            steps {
+                dir( 'ce-cloud-depl' ) {
+                    sh 'mv f5xc_azure_site_create.tf_ f5xc_azure_site_create.tf'
+                }
+            }
+        }
+        stage('format check') {
+    	    steps{
+                dir( 'ce-cloud-depl' ) {
+                    sh 'terraform fmt -no-color'
+                }
+            }
+        }
+        stage('init') {
+            steps {
+                dir( 'ce-cloud-depl' ) {
+                    sh 'terraform init -no-color'
+                }
+            }
+        }
+        stage('apply') {
+            steps {
+                dir( 'ce-cloud-depl' ) {
+  		    sh """
+		        terraform apply -var location=\"${params.location}\" -var site_type=\"${params.sitetype}\" -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+        stage('demo') {
+            steps {
+                input('Did you finish the demo?')
+            }
+        }
+        stage('destroy') {
+            steps {
+                dir( 'ce-cloud-depl' ) {
+  		    sh """
+		        terraform destroy  -var location=\"${params.location}\" -var site_type=\"${params.sitetype}\" -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+    }
+}
+

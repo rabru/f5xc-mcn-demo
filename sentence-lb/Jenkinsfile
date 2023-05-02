@@ -1,0 +1,75 @@
+pipeline {
+    agent {
+        node {
+	    label 'jenkins'
+        }
+    } 
+
+    stages {
+        stage('code') { 
+            steps {
+                git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+            }
+        }
+        stage('format check') {
+    	    steps{
+                dir( 'sentence-lb' ) {
+                    sh 'terraform fmt -no-color'
+                }
+            }
+        }
+        stage('init') {
+            steps {
+                dir( 'sentence-lb' ) {
+                    sh 'terraform init -no-color'
+                }
+            }
+        }
+        stage('apply') {
+            steps {
+                dir( 'sentence-lb' ) {
+  		    sh """
+		        terraform apply -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+        stage('demo frontend only') {
+            steps {
+                input('Demo without backend LB. Next?')
+            }
+        }
+        stage('apply backend connection') {
+            steps {
+                dir( 'sentence-lb' ) {
+                    sh 'mv backend-colors.tf_ backend-colors.tf'
+                    sh 'mv backend-animals.tf_ backend-animals.tf'
+                    sh 'mv backend-adjectives.tf_ backend-adjectives.tf'
+                    sh 'mv backend-locations.tf_ backend-locations.tf'
+                    sh """
+                        terraform apply -no-color --auto-approve ;
+                    """                }
+            }
+        }
+
+        stage('demo') {
+            steps {
+                input('Did you finish the demo?')
+            }
+        }
+        stage('destroy') {
+            steps {
+                dir( 'sentence-lb' ) {
+  		    sh """
+		        terraform destroy -no-color --auto-approve ;
+		    """
+                    sh 'mv backend-colors.tf backend-colors.tf_'
+                    sh 'mv backend-animals.tf backend-animals.tf_'
+                    sh 'mv backend-adjectives.tf backend-adjectives.tf_'
+                    sh 'mv backend-locations.tf backend-locations.tf_'
+                }
+            }
+        }
+    }
+}
+

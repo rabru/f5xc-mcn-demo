@@ -1,0 +1,22 @@
+pipeline {
+  agent any
+  parameters {
+    stashedFile 'volterra.p12'
+    password(name: 'PASSWD', description: 'pkcs12 password')
+  }
+  stages {
+    stage('code') {
+      steps {
+        git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+      }
+    }
+    stage('upload cert') {
+      steps {
+        unstash 'volterra.p12'
+        sh """
+          ./cert-upload/convert-cert.sh volterra.p12 ${PASSWD}
+        """
+      }
+    }
+  }
+}

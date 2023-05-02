@@ -1,0 +1,82 @@
+pipeline {
+    agent {
+        node {
+	    label 'jenkins'
+        }
+    } 
+
+    stages {
+        stage('code') { 
+            steps {
+                git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+            }
+        }
+        stage('init') {
+            steps {
+                dir( 'sentence-pod' ) {
+                    sh 'terraform init -no-color'
+                }
+            }
+        }
+        stage('get kubeconfig') {
+            steps {
+                dir( 'sentence-pod' ) {
+  		    sh """
+		        terraform apply -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+        stage('deploy frontend') {
+            steps {
+                dir( 'sentence-pod' ) {
+                    sh """
+                        kubectl apply -f frontend.yaml ;
+                    """
+                }
+            }
+        }
+        stage('deploy backend') {
+            steps {
+                dir( 'sentence-pod' ) {
+                    sh """
+                        kubectl apply -f backend.yaml ;
+                    """
+                }
+            }
+        }
+        stage('demo') {
+            steps {
+                input('Did you finish the demo?')
+            }
+        }
+        stage('delete backend') {
+            steps {
+                dir( 'sentence-pod' ) {
+                    sh """
+                        kubectl delete -f backend.yaml ;
+                    """
+                }
+            }
+        }
+        stage('delete frontend') {
+            steps {
+                dir( 'sentence-pod' ) {
+                    sh """
+                        kubectl delete -f frontend.yaml ;
+                    """
+                }
+            }
+        }
+        stage('remove kubeconfig') {
+            steps {
+                dir( 'sentence-pod' ) {
+  		    sh """
+		        terraform destroy -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+    }
+}
+

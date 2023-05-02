@@ -1,0 +1,53 @@
+pipeline {
+    agent {
+        node {
+	    label 'jenkins'
+        }
+    } 
+
+    stages {
+        stage('code') { 
+            steps {
+                git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+            }
+        }
+        stage('format check') {
+    	    steps{
+                dir( 'basic-setup' ) {
+                    sh 'terraform fmt -no-color'
+                }
+            }
+        }
+        stage('init') {
+            steps {
+                dir( 'basic-setup' ) {
+                    sh 'terraform init -no-color'
+                }
+            }
+        }
+        stage('apply') {
+            steps {
+                dir( 'basic-setup' ) {
+  		    sh """
+		        terraform apply -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+        stage('demo') {
+            steps {
+                input('Did you finish the demo?')
+            }
+        }
+        stage('destroy') {
+            steps {
+                dir( 'basic-setup' ) {
+  		    sh """
+		        terraform destroy -no-color --auto-approve ;
+		    """
+                }
+            }
+        }
+    }
+}
+

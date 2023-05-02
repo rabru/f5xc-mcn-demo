@@ -1,0 +1,84 @@
+resource "volterra_aws_vpc_site" "awssite" {
+  name       = "${var.namespace}-${var.location}"
+  namespace  = "system"
+  aws_region = var.regions[var.location]
+
+  default_blocked_services = true
+
+  // One of the arguments from this list "aws_cred assisted" must be set
+
+  aws_cred {
+    name      = var.aws_cred
+    namespace = "system"
+  }
+  instance_type = var.aws_instance_type
+
+  // One of the arguments from this list "logs_streaming_disabled log_receiver" must be set
+  logs_streaming_disabled = true
+
+  vpc {
+    new_vpc {
+      autogenerate = true
+      primary_ipv4 = "10.1.0.0/16"
+    }
+  }
+
+  labels = {
+    "${var.namespace}.sentence"=var.site_type,
+    "hw-model"=var.aws_instance_type,
+    "provider"="AWS",
+    "ves.io/siteType"="ves-io-ce"
+  }  
+
+  tags = {
+    "owner"="${var.email}"
+  }
+
+  // One of the arguments from this list "ingress_gw ingress_egress_gw voltstack_cluster" must be set
+
+  voltstack_cluster {
+    allowed_vip_port {
+      // One of the arguments from this list "use_http_port use_https_port use_http_https_port custom_ports" must be set
+      use_https_port = true
+    }
+
+    aws_certified_hw = "aws-byol-voltstack-combo"
+
+    no_forward_proxy = true
+    no_global_network = true
+    no_k8s_cluster = true
+    no_network_policy = true
+    #no_outside_static_routes = true
+    outside_static_routes {
+      static_route_list { 
+        simple_static_route = "10.1.1.0/24"
+      }
+    }
+
+    default_storage = true
+
+    az_nodes {
+      aws_az_name = "${var.regions[var.location]}a"
+      #disk_size   = "disk_size"
+
+      local_subnet {
+        // One of the arguments from this list "subnet_param existing_subnet_id" must be set
+
+        subnet_param {
+          ipv4 = "10.1.1.0/24"
+        }
+      }
+    }
+  }
+  // One of the arguments from this list "nodes_per_az total_nodes no_worker_nodes" must be set
+  #nodes_per_az = "2"
+  no_worker_nodes = true
+}
+
+resource "volterra_tf_params_action" "apply_aws_site" {
+  site_name       = volterra_aws_vpc_site.awssite.name
+  site_kind       = "aws_vpc_site"
+  action          = "apply"
+  wait_for_action = true
+}
+

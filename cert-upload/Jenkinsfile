@@ -7,7 +7,7 @@ pipeline {
   stages {
     stage('code') {
       steps {
-        git url: 'ralf@plumpel:git/f5xc-mcn-demo.git'
+        git url: 'https://github.com/rabru/f5xc-mcn-demo.git'
       }
     }
     stage('upload cert') {
